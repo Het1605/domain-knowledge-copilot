@@ -15,3 +15,14 @@ class CorpusOut(CorpusBase):
     class Config:
         # Enable ORM attribute loading from SQLAlchemy Corpus objects
         from_attributes = True
+
+class DocumentOut(BaseModel):
+    id: int
+    filename: str
+    file_type: str
+    status: str
+    corpus_id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
