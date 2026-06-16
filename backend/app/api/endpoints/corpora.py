@@ -48,7 +48,7 @@ def delete_corpus(
     db: Session = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_user)
 ):
-    """Deletes a target corpus, checking user ownership. Cascades to remove SQLite child items."""
+    """Deletes a target corpus, checking user ownership. Cascades to remove SQLite child items and ChromaDB collection."""
     corpus = db.query(Corpus).filter(
         Corpus.id == corpus_id,
         Corpus.owner_id == current_user.id
@@ -59,6 +59,10 @@ def delete_corpus(
             detail="Corpus not found or not authorized."
         )
         
+    # Purge vector collection associated with the corpus
+    from backend.app.services.vector_store import delete_corpus_collection
+    delete_corpus_collection(corpus_id)
+
     db.delete(corpus)
     db.commit()
     return {"message": "Corpus successfully deleted."}

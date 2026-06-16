@@ -119,7 +119,17 @@ def process_document_ingestion(db: Session, doc_id: int, file_bytes: bytes):
         # Output logging verification info
         logger.info(f"Successfully extracted {len(page_chunks)} chunks for document {doc_id}.")
 
-        # 2. Update status inside SQLite
+        # 2. Store chunks and embeddings in ChromaDB
+        if page_chunks:
+            from backend.app.services.vector_store import add_document_chunks
+            add_document_chunks(
+                corpus_id=doc.corpus_id,
+                document_id=doc.id,
+                filename=doc.filename,
+                chunks=page_chunks
+            )
+
+        # 3. Update status inside SQLite
         doc.status = "completed"
         db.commit()
         logger.info(f"Ingestion completed successfully for document {doc_id} ({doc.filename})")

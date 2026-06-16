@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.app.core.config import settings
 from backend.app.core.database import Base, engine
-from backend.app.api.endpoints import auth, corpora
+from backend.app.api.endpoints import auth, corpora, chat
 
 # Import all models to ensure they are registered with Base metadata
 from backend.app.models import user, corpus, chat
@@ -25,6 +25,7 @@ app.add_middleware(
 # Mount Routers
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(corpora.router, prefix="/api/corpora", tags=["Corpora Management"])
+app.include_router(chat.router, prefix="/api/chat", tags=["Chat Engine"])
 
 @app.on_event("startup")
 def startup_event():
