@@ -87,6 +87,14 @@ def upload_document(
             detail="Corpus not found or not authorized."
         )
         
+    # 1b. Enforce document count limit (Max 15 documents per corpus)
+    doc_count = db.query(Document).filter(Document.corpus_id == corpus_id).count()
+    if doc_count >= 15:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This corpus has reached the limit of 15 documents. Please delete unused files or create a new corpus."
+        )
+        
     # 2. Check if a document with identical name already exists in corpus
     existing_doc = db.query(Document).filter(
         Document.corpus_id == corpus_id,
@@ -100,6 +108,14 @@ def upload_document(
         
     # Read binary bytes
     file_bytes = file.file.read()
+    
+    # Enforce file size limit (Max 15MB)
+    if len(file_bytes) > 15 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File size exceeds the 15MB limit. Please upload a smaller document."
+        )
+        
     ext = file.filename.split(".")[-1].lower() if "." in file.filename else "TXT"
     
     # 3. Create document log inside SQLite

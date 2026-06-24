@@ -16,6 +16,7 @@ def render_document_manager():
 
     st.markdown("### 📂 Document Manager")
     st.markdown("Upload reference files (PDF, DOCX, TXT, or MD) to index them for the Co-Pilot.")
+    st.caption("⚠️ **Limits**: Maximum 15 documents per corpus | Maximum 15MB file size per document.")
     
     # Display persistent upload feedback toast if any
     if st.session_state["upload_status"]:
@@ -35,20 +36,33 @@ def render_document_manager():
     
     if uploaded_file is not None:
         file_bytes = uploaded_file.read()
+        current_idx = int(st.session_state["uploader_key"].split("_")[1])
+        
+        # 1. Enforce file size limit on frontend
+        if len(file_bytes) > 15 * 1024 * 1024:
+            st.session_state["upload_status"] = ("error", f"File '{uploaded_file.name}' exceeds the 15MB limit. Please upload a smaller document.")
+            st.session_state["uploader_key"] = f"uploader_{current_idx + 1}"
+            st.rerun()
+            
+        # 2. Enforce document count limit on frontend
+        existing_docs = api_client.list_documents(corpus_id)
+        if existing_docs and len(existing_docs) >= 15:
+            st.session_state["upload_status"] = ("error", "This corpus has reached the limit of 15 documents. Please delete unused files or create a new corpus.")
+            st.session_state["uploader_key"] = f"uploader_{current_idx + 1}"
+            st.rerun()
+            
         with st.spinner(f"Ingesting {uploaded_file.name}..."):
             res = api_client.upload_document(
                 corpus_id,
                 uploaded_file.name,
                 file_bytes
             )
-            # Increment key index to force widget recreation and clear the file field
-            current_idx = int(st.session_state["uploader_key"].split("_")[1])
             st.session_state["uploader_key"] = f"uploader_{current_idx + 1}"
             
             if res:
                 st.session_state["upload_status"] = ("success", f"Uploaded '{uploaded_file.name}' successfully. Background task queued.")
             else:
-                st.session_state["upload_status"] = ("error", f"A document with filename '{uploaded_file.name}' already exists or failed to upload.")
+                st.session_state["upload_status"] = ("error", f"A document with filename '{uploaded_file.name}' already exists, or the corpus is full.")
             st.rerun()
                 
     st.divider()
