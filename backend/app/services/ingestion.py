@@ -128,6 +128,8 @@ def process_document_ingestion(db: Session, doc_id: int, file_bytes: bytes):
                 filename=doc.filename,
                 chunks=page_chunks
             )
+        else:
+            raise ValueError("No text could be extracted from this document (it might be scanned, empty, or unparseable).")
 
         # 3. Update status inside SQLite
         doc.status = "completed"

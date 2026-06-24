@@ -134,3 +134,36 @@ def list_documents(
         )
         
     return db.query(Document).filter(Document.corpus_id == corpus_id).all()
+
+@router.delete("/{corpus_id}/documents/{document_id}", status_code=status.HTTP_200_OK)
+def delete_document(
+    corpus_id: int,
+    document_id: int,
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user)
+):
+    """Deletes a target document and purges its vector embeddings from ChromaDB."""
+    # 1. Verify corpus ownership
+    corpus = db.query(Corpus).filter(Corpus.id == corpus_id, Corpus.owner_id == current_user.id).first()
+    if not corpus:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Corpus not found or not authorized."
+        )
+
+    # 2. Verify document exists in this corpus
+    doc = db.query(Document).filter(Document.id == document_id, Document.corpus_id == corpus_id).first()
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found inside target corpus."
+        )
+
+    # 3. Purge vector chunks from ChromaDB
+    from backend.app.services.vector_store import delete_document_chunks
+    delete_document_chunks(corpus_id, document_id)
+
+    # 4. Remove metadata record from SQLite
+    db.delete(doc)
+    db.commit()
+    return {"message": "Document successfully deleted."}

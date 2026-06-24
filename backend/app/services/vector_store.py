@@ -62,8 +62,10 @@ def add_document_chunks(corpus_id: int, document_id: int, filename: str, chunks:
     )
     logger.info(f"Successfully indexed document {document_id} chunks in collection '{collection_name}'")
 
-def query_vector_store(corpus_id: int, query_text: str, n_results: int = 5) -> list[dict]:
-    """Retrieves the top-K relevant chunks for a user query from the corpus collection."""
+def query_vector_store(corpus_id: int, query_text: str, n_results: int = 5, document_id: int = None) -> list[dict]:
+    """Retrieves the top-K relevant chunks for a user query from the corpus collection,
+    optionally filtered by a specific document_id.
+    """
     collection_name = f"corpus_{corpus_id}"
     
     try:
@@ -75,10 +77,14 @@ def query_vector_store(corpus_id: int, query_text: str, n_results: int = 5) -> l
     # Embed query string
     query_embedding = embedding_model.encode([query_text]).tolist()
 
+    # Build filter if document_id is provided
+    where_clause = {"document_id": document_id} if document_id is not None else None
+
     # Query ChromaDB collection
     results = collection.query(
         query_embeddings=query_embedding,
-        n_results=n_results
+        n_results=n_results,
+        where=where_clause
     )
 
     formatted_results = []
@@ -110,3 +116,13 @@ def delete_corpus_collection(corpus_id: int):
         logger.info(f"Purged ChromaDB collection '{collection_name}' successfully.")
     except Exception as e:
         logger.warning(f"Could not delete ChromaDB collection '{collection_name}': {e}")
+
+def delete_document_chunks(corpus_id: int, document_id: int):
+    """Deletes all vectorized chunks matching the target document_id from the corpus collection."""
+    collection_name = f"corpus_{corpus_id}"
+    try:
+        collection = chroma_client.get_collection(name=collection_name)
+        collection.delete(where={"document_id": document_id})
+        logger.info(f"Purged chunks for document {document_id} from ChromaDB collection '{collection_name}'")
+    except Exception as e:
+        logger.warning(f"Could not delete document {document_id} chunks from ChromaDB: {e}")

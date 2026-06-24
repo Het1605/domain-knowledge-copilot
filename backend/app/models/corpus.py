@@ -12,7 +12,9 @@ class Corpus(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships
-    owner = relationship("User", back_populates="corpora" if hasattr(Base, "User") else None, backref="corpora")
+    owner = relationship("User", backref="corpora")
+    documents = relationship("Document", back_populates="corpus", cascade="all, delete-orphan")
+    chat_sessions = relationship("ChatSession", back_populates="corpus", cascade="all, delete-orphan")
 
     __table_args__ = (
         UniqueConstraint("owner_id", "name", name="uq_owner_corpus_name"),
@@ -29,7 +31,7 @@ class Document(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships
-    corpus = relationship("Corpus", backref="documents")
+    corpus = relationship("Corpus", back_populates="documents")
 
     __table_args__ = (
         UniqueConstraint("corpus_id", "filename", name="uq_corpus_filename"),

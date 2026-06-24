@@ -13,8 +13,9 @@ class ChatSession(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships
-    corpus = relationship("Corpus", backref="chat_sessions")
+    corpus = relationship("Corpus", back_populates="chat_sessions")
     user = relationship("User", backref="chat_sessions")
+    messages = relationship("Message", back_populates="session", cascade="all, delete-orphan")
 
 class Message(Base):
     __tablename__ = "messages"
@@ -27,4 +28,4 @@ class Message(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships
-    session = relationship("ChatSession", backref="messages")
+    session = relationship("ChatSession", back_populates="messages")

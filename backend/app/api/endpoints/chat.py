@@ -1,12 +1,9 @@
-import json
 import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from groq import Groq
 
 from backend.app.api import deps
-from backend.app.core.config import settings
 from backend.app.models.user import User
 from backend.app.models.corpus import Corpus
 from backend.app.models.chat import ChatSession, Message
@@ -15,10 +12,9 @@ from backend.app.schemas.chat import (
     ChatSessionOut,
     MessageOut,
     ChatPromptIn,
-    ChatResponseOut,
-    CitationOut
+    ChatResponseOut
 )
-from backend.app.services.vector_store import query_vector_store
+from backend.app.services.llm import execute_rag_query
 
 logger = logging.getLogger(__name__)
 
@@ -140,105 +136,16 @@ def send_chat_message(
             detail="Chat session not found or not authorized."
         )
 
-    # 2. Retrieve top relevant document chunks from ChromaDB
-    retrieved_chunks = query_vector_store(
-        corpus_id=session.corpus_id,
-        query_text=prompt_in.message,
-        n_results=5
-    )
-
-    # 3. Format context string for LLM and build citation metadata
-    context_str = ""
-    citations = []
-    
-    for i, chunk in enumerate(retrieved_chunks, 1):
-        page_info = f", Page {chunk['page_number']}" if chunk.get("page_number") is not None else ""
-        context_str += f"Document Chunk [{i}] (Source: {chunk['filename']}{page_info}):\n{chunk['text']}\n\n"
-        
-        citations.append(
-            CitationOut(
-                filename=chunk["filename"],
-                page_number=chunk["page_number"],
-                text=chunk["text"]
-            )
+    try:
+        response = execute_rag_query(db, session_id, prompt_in.message)
+        return response
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
         )
-
-    # 4. Fetch the last 6 messages to inject conversational context
-    history_records = db.query(Message).filter(
-        Message.session_id == session_id
-    ).order_by(Message.created_at.desc()).limit(6).all()
-    
-    # Reverse history so it's chronologically ascending
-    history_records.reverse()
-
-    # 5. Build prompt payload for Groq
-    system_instruction = (
-        "You are a helpful and precise Domain Knowledge Co-Pilot.\n"
-        "Your task is to answer the user's question using ONLY the provided document chunks below.\n"
-        "Refer to the source chunks as [1], [2], etc., corresponding to their chunk index numbers.\n"
-        "If the answer cannot be found in the provided document chunks, you MUST say exactly: "
-        "'I cannot find the answer in the provided documents.'\n"
-        "Do not use external knowledge or make up answers. Be direct, factual, and professional.\n\n"
-        "--- START PROVIDED CONTEXT ---\n"
-        f"{context_str}"
-        "--- END PROVIDED CONTEXT ---"
-    )
-
-    messages_payload = [
-        {"role": "system", "content": system_instruction}
-    ]
-    for msg in history_records:
-        messages_payload.append({"role": msg.role, "content": msg.content})
-    messages_payload.append({"role": "user", "content": prompt_in.message})
-
-    # 6. Execute Groq completion call
-    if not settings.GROQ_API_KEY or settings.GROQ_API_KEY.strip() == "your_groq_api_key_here":
+    except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Groq API key is not configured on the server. Please check the backend .env configuration."
+            detail=f"Error executing query: {str(e)}"
         )
-
-    try:
-        client = Groq(api_key=settings.GROQ_API_KEY)
-        completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=messages_payload,
-            temperature=0.0  # Set temperature to 0 for highest factual precision
-        )
-        assistant_response = completion.choices[0].message.content
-    except Exception as e:
-        logger.error(f"Groq API call failure: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Groq LLM endpoint failure: {str(e)}"
-        )
-
-    # 7. Write history log records to SQLite
-    user_msg_record = Message(
-        session_id=session_id,
-        role="user",
-        content=prompt_in.message,
-        citations_json=None
-    )
-    db.add(user_msg_record)
-
-    # Construct citations JSON list for database serialization
-    citations_data = [
-        {"filename": c.filename, "page_number": c.page_number, "text": c.text}
-        for c in citations
-    ]
-    
-    assistant_msg_record = Message(
-        session_id=session_id,
-        role="assistant",
-        content=assistant_response,
-        citations_json=json.dumps(citations_data)
-    )
-    db.add(assistant_msg_record)
-    db.commit()
-
-    return ChatResponseOut(
-        role="assistant",
-        content=assistant_response,
-        citations=citations
-    )
