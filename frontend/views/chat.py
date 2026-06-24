@@ -60,19 +60,7 @@ def render_chat_view(selected_corpus):
                 st.markdown(user_prompt)
                 
             with st.chat_message("assistant"):
-                with st.spinner("Analyzing document context..."):
-                    response = api_client.send_message(session_id, user_prompt)
-                    if response:
-                        st.markdown(response["content"])
-                        citations = response.get("citations", [])
-                        if citations:
-                            with st.expander("📚 View Citations"):
-                                for idx, citation in enumerate(citations, 1):
-                                    page_lbl = f", Page {citation['page_number']}" if citation.get("page_number") is not None and citation["page_number"] != -1 else ""
-                                    st.markdown(f"""
-                                    <div class="citation-block">
-                                        <strong>[{idx}] {citation['filename']}{page_lbl}</strong><br/>
-                                        <span style="color: #9ca3af; font-size: 0.9rem;">"{citation['text']}"</span>
-                                    </div>
-                                    """, unsafe_allow_html=True)
-                        st.rerun()
+                response_generator = api_client.send_message(session_id, user_prompt)
+                if response_generator:
+                    st.write_stream(response_generator)
+                st.rerun()

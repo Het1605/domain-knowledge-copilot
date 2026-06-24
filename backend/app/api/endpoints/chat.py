@@ -1,6 +1,7 @@
 import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from backend.app.api import deps
@@ -11,10 +12,9 @@ from backend.app.schemas.chat import (
     ChatSessionCreate,
     ChatSessionOut,
     MessageOut,
-    ChatPromptIn,
-    ChatResponseOut
+    ChatPromptIn
 )
-from backend.app.services.llm import execute_rag_query
+from backend.app.services.llm import execute_rag_query_stream
 
 logger = logging.getLogger(__name__)
 
@@ -117,14 +117,14 @@ def list_session_messages(
         
     return db.query(Message).filter(Message.session_id == session_id).order_by(Message.created_at.asc()).all()
 
-@router.post("/sessions/{session_id}/messages", response_model=ChatResponseOut)
+@router.post("/sessions/{session_id}/messages")
 def send_chat_message(
     session_id: int,
     prompt_in: ChatPromptIn,
     db: Session = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_user)
 ):
-    """Executes vector document search, compiles history context, and queries Groq for RAG answers with citations."""
+    """Executes vector document search, compiles history context, and streams Groq RAG answer tokens."""
     # 1. Verify chat session ownership
     session = db.query(ChatSession).filter(
         ChatSession.id == session_id,
@@ -137,8 +137,10 @@ def send_chat_message(
         )
 
     try:
-        response = execute_rag_query(db, session_id, prompt_in.message)
-        return response
+        return StreamingResponse(
+            execute_rag_query_stream(db, session_id, prompt_in.message),
+            media_type="text/plain"
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

@@ -221,20 +221,26 @@ def list_messages(session_id: int) -> list:
         logger.error(f"List messages error: {e}")
         return []
 
-def send_message(session_id: int, query: str) -> dict | None:
-    """Posts user query to execute vector-search retrieval and Groq generation."""
+def send_message(session_id: int, query: str):
+    """Posts user query to execute vector-search retrieval and stream Groq generation chunks."""
     try:
         response = requests.post(
             f"{BACKEND_URL}/api/chat/sessions/{session_id}/messages",
             headers=get_headers(),
             json={"message": query},
+            stream=True,
             timeout=60
         )
         if response.status_code == 200:
-            return response.json()
+            for chunk in response.iter_content(chunk_size=None, decode_unicode=True):
+                if chunk:
+                    yield chunk
         else:
-            st.error(response.json().get("detail", "Error querying RAG server."))
-            return None
+            try:
+                err_detail = response.json().get("detail", "Error querying RAG server.")
+            except Exception:
+                err_detail = "Error querying RAG server."
+            st.error(err_detail)
     except Exception as e:
-        logger.error(f"Send message error: {e}")
-        return None
+        logger.error(f"Send message streaming error: {e}")
+        st.error(f"Connection error: {e}")
