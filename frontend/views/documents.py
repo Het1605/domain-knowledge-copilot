@@ -67,43 +67,44 @@ def render_document_manager():
                 
     st.divider()
     
-    st.markdown("### Uploaded Documents")
-    
-    # Refresh control
-    if st.button("🔄 Refresh Documents List", use_container_width=True, key="refresh_docs_list_btn"):
-        st.rerun()
+    with st.container(height=300, border=False):
+        st.markdown("### Uploaded Documents")
         
-    docs = api_client.list_documents(corpus_id)
-    if not docs:
-        st.info("No documents uploaded to this corpus yet.")
-    else:
-        for doc in docs:
-            status = doc["status"].lower()
-            badge_text = doc["status"].upper()
+        # Refresh control
+        if st.button("🔄 Refresh Documents List", use_container_width=True, key="refresh_docs_list_btn"):
+            st.rerun()
             
-            # Row display with details on the left and delete button on the right
-            card_col, action_col = st.columns([6, 1], gap="small")
-            with card_col:
-                st.markdown(f"""
-                <div class="doc-card" style="margin-bottom: 0;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <strong style="color: #f3f4f6;">📄 {doc['filename']}</strong>
-                            <div style="color: #9ca3af; font-size: 0.85rem; margin-top: 0.25rem;">
-                                Type: {doc['file_type']} | Uploaded: {doc['created_at'][:19].replace('T', ' ')}
+        docs = api_client.list_documents(corpus_id)
+        if not docs:
+            st.info("No documents uploaded to this corpus yet.")
+        else:
+            for doc in docs:
+                status = doc["status"].lower()
+                badge_text = doc["status"].upper()
+                
+                # Row display with details on the left and delete button on the right
+                card_col, action_col = st.columns([6, 1], gap="small")
+                with card_col:
+                    st.markdown(f"""
+                    <div class="doc-card" style="margin-bottom: 0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong style="color: #f3f4f6;">📄 {doc['filename']}</strong>
+                                <div style="color: #9ca3af; font-size: 0.85rem; margin-top: 0.25rem;">
+                                    Type: {doc['file_type']} | Uploaded: {doc['created_at'][:19].replace('T', ' ')}
+                                </div>
                             </div>
+                            <span class="status-badge status-{status}">{badge_text}</span>
                         </div>
-                        <span class="status-badge status-{status}">{badge_text}</span>
                     </div>
-                </div>
-                """, unsafe_allow_html=True)
-            with action_col:
-                st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
-                if st.button("🗑️", key=f"del_doc_{doc['id']}", help=f"Delete {doc['filename']}", use_container_width=True):
-                    if api_client.delete_document(corpus_id, doc["id"]):
-                        st.toast(f"Deleted '{doc['filename']}' successfully!", icon="🗑️")
-                        st.rerun()
-                    else:
-                        st.toast("Failed to delete document.", icon="🚨")
-            
-            st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
+                with action_col:
+                    st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+                    if st.button("🗑️", key=f"del_doc_{doc['id']}", help=f"Delete {doc['filename']}", use_container_width=True):
+                        if api_client.delete_document(corpus_id, doc["id"]):
+                            st.toast(f"Deleted '{doc['filename']}' successfully!", icon="🗑️")
+                            st.rerun()
+                        else:
+                            st.toast("Failed to delete document.", icon="🚨")
+                
+                st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)

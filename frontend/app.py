@@ -33,11 +33,14 @@ html, body, [class*="css"] {
     font-family: 'Outfit', sans-serif;
 }
 
-/* Sidebar Styling */
-section[data-testid="stSidebar"] {
-    background-color: #0c0e12;
-    border-right: 1px solid #1f2937;
+/* Custom indicator highlights on active Segmented Control (Tabs) */
+div[data-testid="stSegmentedControl"] button[aria-selected="true"] {
+    background: linear-gradient(135deg, #a855f7 0%, #3b82f6 100%) !important;
+    color: #ffffff !important;
+    border: none !important;
 }
+
+
 
 /* Gradient Header */
 .gradient-text {
@@ -57,10 +60,10 @@ section[data-testid="stSidebar"] {
     text-align: center;
 }
 
-/* Document cards */
+/* Document cards (slightly lighter container backdrops for card depth) */
 .doc-card {
-    background-color: #171c24;
-    border: 1px solid #28303f;
+    background-color: #131a26;
+    border: 1px solid #222d3d;
     border-radius: 8px;
     padding: 0.75rem;
     margin-bottom: 0.5rem;
@@ -98,35 +101,27 @@ section[data-testid="stSidebar"] {
 
 /* Citation card */
 .citation-block {
-    background-color: #0f1219;
+    background-color: #0d121c;
     border-left: 3px solid #3b82f6;
     padding: 0.75rem 1rem;
     margin-bottom: 0.75rem;
     border-radius: 0 6px 6px 0;
 }
 
-/* Style Streamlit header to be transparent and click-through, keeping sidebar expander visible */
-header[data-testid="stHeader"] {
-    background-color: transparent !important;
-    pointer-events: none !important;
-}
-header[data-testid="stHeader"] button {
-    pointer-events: auto !important;
-}
-header[data-testid="stHeader"] div[data-testid="stDeployButton"],
-header[data-testid="stHeader"] button[data-testid="stHeaderMenuButton"] {
+/* Hide Streamlit header completely to maximize screen space and prevent overlapping click-blocking */
+header[data-testid="stHeader"], header {
     display: none !important;
 }
 
 /* Disable main scrollbars globally */
-html, body, [data-testid="stAppViewContainer"], section[data-testid="stMain"] {
+html, body, [data-testid="stAppViewContainer"], section[data-testid="stMain"], section.main, .stApp {
     overflow: hidden !important;
     height: 100vh !important;
     max-height: 100vh !important;
 }
 
 /* Ensure the main block container fills the space and doesn't scroll */
-div[data-testid="stAppViewBlockContainer"] {
+div[data-testid="stAppViewBlockContainer"], div.block-container {
     height: 100vh !important;
     max-height: 100vh !important;
     padding-top: 0.5rem !important; /* Lifts the content to the very top */
@@ -135,7 +130,6 @@ div[data-testid="stAppViewBlockContainer"] {
     padding-right: 2rem !important;
     overflow: hidden !important;
 }
-
 </style>
 """, unsafe_allow_html=True)
 
@@ -175,19 +169,7 @@ else:
         if active_tab == "💬 Chat Co-Pilot":
             st.markdown("""
             <style>
-            /* Lock viewport for Chat */
-            html, body, [data-testid="stAppViewContainer"], section[data-testid="stMain"] {
-                overflow: hidden !important;
-                height: 100vh !important;
-                max-height: 100vh !important;
-            }
-            div[data-testid="stAppViewBlockContainer"] {
-                height: 100vh !important;
-                max-height: 100vh !important;
-                padding-top: 0.5rem !important;
-                padding-bottom: 0.5rem !important;
-                overflow: hidden !important;
-            }
+            /* Make chat messages responsive within viewport */
             div[data-testid="stAppViewBlockContainer"] div[data-testid="stElementContainer"] div[style*="height"] {
                 height: 70vh !important;
                 max-height: 70vh !important;
@@ -199,18 +181,11 @@ else:
         elif active_tab == "📂 Document Manager":
             st.markdown("""
             <style>
-            /* Unlock page scroll for Document Manager */
-            html, body, [data-testid="stAppViewContainer"], section[data-testid="stMain"] {
+            /* Make document list container responsive within viewport */
+            div[data-testid="stAppViewBlockContainer"] div[data-testid="stElementContainer"] div[style*="height"] {
+                height: 52vh !important;
+                max-height: 52vh !important;
                 overflow-y: auto !important;
-                height: auto !important;
-                max-height: none !important;
-            }
-            div[data-testid="stAppViewBlockContainer"] {
-                height: auto !important;
-                max-height: none !important;
-                overflow: visible !important;
-                padding-top: 1rem !important;
-                padding-bottom: 2rem !important;
             }
             </style>
             """, unsafe_allow_html=True)
