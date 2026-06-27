@@ -30,7 +30,7 @@ def render_chat_view(selected_corpus):
         messages = api_client.list_messages(session_id)
         
         # Display messages inside a scrollable container (ChatGPT UI Style)
-        with st.container(height=550, border=False):
+        with st.container(height=550, border=False, key="chat_messages_container"):
             for msg in messages:
                 with st.chat_message(msg["role"]):
                     st.markdown(msg["content"])

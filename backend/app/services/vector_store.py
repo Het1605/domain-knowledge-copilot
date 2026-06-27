@@ -1,6 +1,6 @@
 import logging
 import chromadb
-from sentence_transformers import SentenceTransformer
+import cohere
 from backend.app.core.config import settings
 
 # Set up logging
@@ -10,13 +10,13 @@ logger = logging.getLogger(__name__)
 logger.info(f"Initializing persistent ChromaDB client at: {settings.CHROMADB_DIR}")
 chroma_client = chromadb.PersistentClient(path=settings.CHROMADB_DIR)
 
-# Initialize global sentence embeddings model
-logger.info("Initializing SentenceTransformer model 'all-MiniLM-L6-v2'...")
+# Initialize Cohere Client for cloud embeddings
+logger.info("Initializing Cohere client for cloud embeddings...")
 try:
-    embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
-    logger.info("SentenceTransformer model loaded successfully.")
+    cohere_client = cohere.Client(api_key=settings.COHERE_API_KEY)
+    logger.info("Cohere client initialized successfully.")
 except Exception as e:
-    logger.error(f"Failed to load SentenceTransformer model: {e}", exc_info=True)
+    logger.error(f"Failed to initialize Cohere client: {e}", exc_info=True)
     raise e
 
 def add_document_chunks(corpus_id: int, document_id: int, filename: str, chunks: list[tuple[str, int | None]]):
@@ -37,8 +37,17 @@ def add_document_chunks(corpus_id: int, document_id: int, filename: str, chunks:
     # Extract chunk text strings
     texts = [chunk[0] for chunk in chunks]
 
-    # Generate vector embeddings locally
-    embeddings = embedding_model.encode(texts).tolist()
+    # Generate vector embeddings via Cohere cloud API
+    try:
+        response = cohere_client.embed(
+            texts=texts,
+            model="embed-english-v3.0",
+            input_type="search_document"
+        )
+        embeddings = response.embeddings
+    except Exception as e:
+        logger.error(f"Failed to generate embeddings via Cohere: {e}", exc_info=True)
+        raise e
 
     # Build metadata payloads and unique IDs
     metadatas = []
@@ -74,8 +83,17 @@ def query_vector_store(corpus_id: int, query_text: str, n_results: int = 5, docu
         logger.warning(f"ChromaDB collection '{collection_name}' does not exist. Returning empty results.")
         return []
 
-    # Embed query string
-    query_embedding = embedding_model.encode([query_text]).tolist()
+    # Embed query string via Cohere cloud API
+    try:
+        response = cohere_client.embed(
+            texts=[query_text],
+            model="embed-english-v3.0",
+            input_type="search_query"
+        )
+        query_embedding = response.embeddings
+    except Exception as e:
+        logger.error(f"Failed to generate query embedding via Cohere: {e}", exc_info=True)
+        return []
 
     # Build filter if document_id is provided
     where_clause = {"document_id": document_id} if document_id is not None else None

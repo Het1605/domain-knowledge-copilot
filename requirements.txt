@@ -14,7 +14,7 @@ passlib[bcrypt]>=1.7.4
 
 # Retrieval-Augmented Generation (RAG) & Vector Database
 chromadb>=0.4.24
-sentence-transformers>=2.5.1
+cohere>=5.0.0
 groq>=0.5.0
 langgraph>=0.1.0
 langchain-core>=0.2.0

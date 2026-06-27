@@ -169,11 +169,12 @@ else:
         if active_tab == "💬 Chat Co-Pilot":
             st.markdown("""
             <style>
-            /* Make chat messages responsive within viewport */
-            div[data-testid="stAppViewBlockContainer"] div[data-testid="stElementContainer"] div[style*="height"] {
-                height: 70vh !important;
-                max-height: 70vh !important;
+            /* Make chat messages responsive within viewport and prevent overlap with bottom input */
+            .st-key-chat_messages_container {
+                height: 62vh !important;
+                max-height: 62vh !important;
                 overflow-y: auto !important;
+                padding-bottom: 20px !important;
             }
             </style>
             """, unsafe_allow_html=True)
@@ -182,7 +183,7 @@ else:
             st.markdown("""
             <style>
             /* Make document list container responsive within viewport */
-            div[data-testid="stAppViewBlockContainer"] div[data-testid="stElementContainer"] div[style*="height"] {
+            .st-key-documents_list_container {
                 height: 52vh !important;
                 max-height: 52vh !important;
                 overflow-y: auto !important;

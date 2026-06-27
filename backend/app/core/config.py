@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     # API & Auth Credentials
     GROQ_API_KEY: str
     SECRET_KEY: str
+    COHERE_API_KEY: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours
 
     # DB Persistence Configurations

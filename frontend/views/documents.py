@@ -67,7 +67,7 @@ def render_document_manager():
                 
     st.divider()
     
-    with st.container(height=300, border=False):
+    with st.container(height=300, border=False, key="documents_list_container"):
         st.markdown("### Uploaded Documents")
         
         # Refresh control
